@@ -1,0 +1,455 @@
+
+
+<!DOCTYPE html>
+
+<html lang="th">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>ประมาณการเปลี่ยนหลังคาอาคารเรียน ปร.4-6</title>
+
+<style>
+
+body{font-family:Arial,"Tahoma",sans-serif;margin:0;background:#f2f5f9;color:#202b3c}
+
+header{background:#17365d;color:white;padding:22px 16px}
+
+main{max-width:1100px;margin:auto;padding:16px}
+
+.card{background:white;padding:16px;border-radius:12px;margin:14px 0;box-shadow:0 2px 8px #0001}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+
+label{display:block;font-size:14px;margin-bottom:5px}
+
+input{box-sizing:border-box;width:100%;padding:9px;border:1px solid #ccd3df;border-radius:6px}
+
+button{padding:10px 14px;border:0;border-radius:7px;background:#1769aa;color:white;cursor:pointer;margin:4px 3px 4px 0}
+
+button.secondary{background:#425466}
+
+.tabs{display:flex;flex-wrap:wrap;gap:5px}
+
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+
+th,td{border:1px solid #ccd3df;padding:7px;text-align:right}
+
+th{background:#e8eef6}
+
+td:first-child,th:first-child{text-align:center}
+
+td:nth-child(2),th:nth-child(2){text-align:left}
+
+.tablewrap{overflow-x:auto}
+
+.note{font-size:13px;color:#5b6472;line-height:1.6}
+
+.total{font-size:20px;font-weight:bold;color:#17365d}
+
+.status{background:#fff3cd;padding:12px;border-radius:8px;line-height:1.6}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>ประมาณการเปลี่ยนหลังคาอาคารเรียน</h2>
+
+<div>แบบ ปร.4 • ปร.5 • ปร.6</div>
+
+<div>เครื่องมือคำนวณเบื้องต้นและส่งออก CSV</div>
+
+</header>
+
+<main>
+
+<div class="card">
+
+<h3>1. ข้อมูลโครงการ</h3>
+
+<div class="grid">
+
+<div><label>ชื่อโครงการ</label><input id="project" value="เปลี่ยนหลังคาอาคารเรียน"></div>
+
+<div><label>สถานที่</label><input id="place" value="โรงเรียนบ้านชาด"></div>
+
+<div><label>ความกว้างอาคาร (ม.)</label><input id="width" type="number" value="8.5" step="0.01"></div>
+
+<div><label>ความยาวอาคาร (ม.)</label><input id="length" type="number" value="27" step="0.01"></div>
+
+<div><label>ชายคายื่นแต่ละด้าน (ม.)</label><input id="eave" type="number" value="1" step="0.01"></div>
+
+<div><label>ความลาดเอียง (องศา)</label><input id="pitch" type="number" value="15" step="0.1"></div>
+
+<div><label>เผื่อวัสดุ (%)</label><input id="waste" type="number" value="5" step="0.1"></div>
+
+<div><label>Factor F</label><input id="factor" type="number" value="1.3073" step="0.0001"></div>
+
+</div>
+
+<p class="note">ปรับค่าตามแบบก่อสร้างจริงก่อนใช้จัดทำเอกสารเสนออนุมัติ</p>
+
+<button onclick="calculate()">คำนวณใหม่</button>
+
+</div>
+
+<div class="card">
+
+<h3>2. ปริมาณงานและราคาต่อหน่วย</h3>
+
+<p class="note">ราคาต่อหน่วยด้านล่างเป็นสมมติฐานสำหรับประมาณการเบื้องต้น ไม่ใช่การยืนยันราคากลางทางราชการ</p>
+
+<div class="tablewrap">
+
+<table>
+
+<thead><tr><th>ลำดับ</th><th>รายการ</th><th>หน่วย</th><th>ปริมาณ</th><th>ราคาต่อหน่วย</th><th>รวมเงิน</th></tr></thead>
+
+<tbody id="items"></tbody>
+
+</table>
+
+</div>
+
+<button onclick="addItem()">+ เพิ่มรายการ</button>
+
+<button onclick="calculate()">คำนวณยอดรวม</button>
+
+</div>
+
+<div class="card">
+
+<h3>3. ผลคำนวณ</h3>
+
+<div id="geometry"></div>
+
+<div class="grid">
+
+<div><label>รวมค่าวัสดุและค่าแรง (บาท)</label><div id="direct" class="total">-</div></div>
+
+<div><label>Factor F</label><div id="factorView" class="total">-</div></div>
+
+<div><label>ยอดรวมหลัง Factor F (บาท)</label><div id="grand" class="total">-</div></div>
+
+</div>
+
+<p class="note">ในเครื่องมือนี้ Factor F ใช้คูณยอดรวมต้นทุนโดยตรง และถือว่าปัจจัยภาษีรวมอยู่ใน Factor F แล้ว จึงไม่บวก VAT ซ้ำ ต้องตรวจสอบตาราง Factor F ทางราชการและเงื่อนไขสัญญาที่ใช้จริงก่อนนำยอดไปใช้งาน</p>
+
+</div>
+
+<div class="card">
+
+<h3>4. ส่งออกเอกสาร CSV</h3>
+
+<div class="tabs">
+
+<button onclick="exportCSV('pr4')">ส่งออก ปร.4</button>
+
+<button onclick="exportCSV('pr5')">ส่งออก ปร.5</button>
+
+<button onclick="exportCSV('pr6')">ส่งออก ปร.6</button>
+
+<button class="secondary" onclick="exportCSV('all')">ส่งออกสรุปรวม</button>
+
+</div>
+
+<p class="note">CSV เปิดด้วย Excel ได้ หากภาษาไทยแสดงผลผิด ให้เปิดผ่านเมนูนำเข้าข้อมูลและเลือก UTF-8</p>
+
+</div>
+
+<div class="status">
+
+<strong>ข้อควรตรวจสอบก่อนใช้จริง</strong><br>
+
+1. ตรวจแบบหลังคา ระยะยื่น และความยาวแผ่นจากแบบก่อสร้าง<br>
+
+2. ตรวจราคาวัสดุ ค่าแรง และรายการรื้อถอนจากแหล่งราคา/ใบเสนอราคาที่ใช้ได้ในวันที่จัดทำ<br>
+
+3. ค่าเผื่อ 5% ใช้สำหรับประมาณปริมาณจัดซื้อ ไม่ควรนำไปบวกซ้ำหากปริมาณใน BOQ รวมไว้แล้ว<br>
+
+4. ค่าซ่อมโครงเหล็กและค่าขนส่งเป็นเงินสำรองสมมติ ต้องสำรวจและแยกรายการจริง<br>
+
+5. แบบฟอร์มนี้เป็นเครื่องมือช่วยคำนวณ ไม่ใช่แบบราชการที่รับรองแล้ว
+
+</div>
+
+</main>
+
+<script>
+
+const defaults = [
+
+ ["รื้อถอนวัสดุมุงหลังคาเดิม","ตร.ม.", "roof",45],
+
+ ["จัดซื้อเมทัลชีทสีแดง AZ70 หนา 0.37 มม.","ตร.ม.","sheet",350],
+
+ ["ค่าแรงติดตั้งแผ่นหลังคา","ตร.ม.","roof",72],
+
+ ["ครอบสันหลังคา","เมตร","ridge",180],
+
+ ["ครอบข้าง/ปิดขอบหลังคา","เมตร","edge",100],
+
+ ["สกรูและอุปกรณ์ยึด","ตร.ม.","sheet",20],
+
+ ["สำรองซ่อมแซมโครงเหล็ก","งาน","one",35000],
+
+ ["ขนส่ง อุปกรณ์ความปลอดภัย และค่าใช้จ่ายประกอบ","งาน","one",20000]
+
+];
+
+let rows = [];
+
+function geometry(){
+
+ const w=+document.getElementById('width').value;
+
+ const l=+document.getElementById('length').value;
+
+ const e=+document.getElementById('eave').value;
+
+ const p=+document.getElementById('pitch').value;
+
+ const waste=+document.getElementById('waste').value/100;
+
+ if([w,l,e,p,waste].some(x=>!Number.isFinite(x))||w<=0||l<=0||e<0||p<=0||p>=60||waste<0) throw Error("กรุณาตรวจสอบขนาดและค่าที่กรอก");
+
+ const ridge=l+2*e;
+
+ const half=(w/2+e)/Math.cos(p*Math.PI/180);
+
+ const roof=2*ridge*half;
+
+ return {ridge,half,roof,sheet:roof*(1+waste),edge:2*ridge+4*half};
+
+}
+
+function money(n){return n.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})}
+
+function init(){
+
+ const g=geometry();
+
+ rows=defaults.map((r,i)=>({no:i+1,name:r[0],unit:r[1],kind:r[2],qty:
+
+ r[2]==="roof"?g.roof:r[2]==="sheet"?g.sheet:r[2]==="ridge"?g.ridge:r[2]==="edge"?g.edge:1,price:r[3]}));
+
+ renderRows(); calculate();
+
+}
+
+function renderRows(){
+
+ document.getElementById('items').innerHTML=rows.map((r,i)=>`
+
+ <tr>
+
+ <td>${i+1}</td>
+
+ <td><input aria-label="รายการ ${i+1}" value="${esc(r.name)}" onchange="rows[${i}].name=this.value"></td>
+
+ <td><input aria-label="หน่วย ${i+1}" value="${esc(r.unit)}" onchange="rows[${i}].unit=this.value"></td>
+
+ <td><input aria-label="ปริมาณ ${i+1}" type="number" min="0" step="0.01" value="${r.qty.toFixed(2)}" onchange="rows[${i}].qty=Math.max(0,+this.value);calculate()"></td>
+
+ <td><input aria-label="ราคา ${i+1}" type="number" min="0" step="0.01" value="${r.price}" onchange="rows[${i}].price=Math.max(0,+this.value);calculate()"></td>
+
+ <td id="amount${i}">${money(r.qty*r.price)}</td>
+
+ </tr>`).join('');
+
+}
+
+function esc(s){return String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;')}
+
+function calculate(){
+
+ try{
+
+ const g=geometry();
+
+ document.getElementById('geometry').innerHTML=
+
+ `พื้นที่หลังคาโดยประมาณ: <strong>${money(g.roof)} ตร.ม.</strong> |
+
+ พื้นที่แผ่นรวมเผื่อ: <strong>${money(g.sheet)} ตร.ม.</strong> |
+
+ ความยาวสัน: ${money(g.ridge)} ม. |
+
+ ความยาวครอบขอบโดยประมาณ: ${money(g.edge)} ม.`;
+
+ rows.forEach((r,i)=>{
+
+ const el=document.getElementById('amount'+i);
+
+ if(el)el.textContent=money((+r.qty||0)*(+r.price||0));
+
+ });
+
+ const subtotal=rows.reduce((s,r)=>s+(+r.qty||0)*(+r.price||0),0);
+
+ const f=+document.getElementById('factor').value;
+
+ document.getElementById('direct').textContent=money(subtotal);
+
+ document.getElementById('factorView').textContent=Number.isFinite(f)?f.toFixed(4):'-';
+
+ document.getElementById('grand').textContent=Number.isFinite(f)?money(subtotal*f):'-';
+
+ }catch(e){alert(e.message)}
+
+}
+
+function addItem(){
+
+ rows.push({no:rows.length+1,name:"รายการเพิ่มเติม",unit:"งาน",kind:"one",qty:1,price:0});
+
+ renderRows();calculate();
+
+}
+
+function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
+
+function downloadCSV(filename, matrix){
+
+ const csv='\uFEFF'+matrix.map(r=>r.map(csvCell).join(',')).join('\r\n');
+
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+
+ const url=URL.createObjectURL(blob);
+
+ const a=document.createElement('a');a.href=url;a.download=filename;
+
+ document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+
+}
+
+function exportCSV(type){
+
+ calculate();
+
+ const project=document.getElementById('project').value;
+
+ const place=document.getElementById('place').value;
+
+ const g=geometry();
+
+ const subtotal=rows.reduce((s,r)=>s+(+r.qty||0)*(+r.price||0),0);
+
+ const f=+document.getElementById('factor').value;
+
+ const total=subtotal*f;
+
+ const head=[
+
+ ["โครงการ",project],["สถานที่",place],
+
+ ["อาคารกว้าง (ม.)",document.getElementById('width').value],
+
+ ["อาคารยาว (ม.)",document.getElementById('length').value],
+
+ ["พื้นที่หลังคา (ตร.ม.)",g.roof.toFixed(2)],
+
+ ["พื้นที่รวมเผื่อวัสดุ (ตร.ม.)",g.sheet.toFixed(2)],
+
+ ["Factor F",f],["หมายเหตุ","ราคาต่อหน่วยเป็นสมมติฐาน ต้องตรวจสอบราคาทางราชการก่อนใช้งาน"]
+
+ ];
+
+ const detail=[["ลำดับ","รายการ","หน่วย","ปริมาณ","ราคาต่อหน่วย (บาท)","รวมเงิน (บาท)"],
+
+ ...rows.map((r,i)=>[i+1,r.name,r.unit,r.qty,r.price,(+r.qty||0)*(+r.price||0)])];
+
+ if(type==="pr4"){
+
+ downloadCSV("ปร4_รายการประมาณราคา.csv",[
+
+ ...head,[],["แบบ ปร.4 รายการประมาณราคาค่าก่อสร้าง"],[],...detail,
+
+ [],["รวมต้นทุนโดยตรง",subtotal]
+
+ ]);
+
+ }else if(type==="pr5"){
+
+ downloadCSV("ปร5_สรุปค่าก่อสร้าง.csv",[
+
+ ...head,[],["แบบ ปร.5 สรุปค่าก่อสร้าง"],[],
+
+ ["รายการ","จำนวนเงิน (บาท)"],
+
+ ["รวมต้นทุนโดยตรง",subtotal],["Factor F",f],["รวมหลัง Factor F",total],
+
+ ["หมายเหตุ","ตรวจสอบตาราง Factor F และเงื่อนไขสัญญาที่ใช้จริง"]
+
+ ]);
+
+ }else if(type==="pr6"){
+
+ downloadCSV("ปร6_สรุปงบประมาณ.csv",[
+
+ ...head,[],["แบบ ปร.6 สรุปงบประมาณโครงการ"],[],
+
+ ["รายการ","จำนวนเงิน (บาท)"],
+
+ ["ประมาณการค่าก่อสร้างรวม",total],
+
+ ["ตัวอักษร","ให้ผู้จัดทำกรอกจำนวนเงินเป็นตัวอักษรหลังตรวจสอบยอด"],
+
+ ["หมายเหตุ","ใช้เป็นแบบสรุปเบื้องต้น ต้องจัดลงแบบราชการฉบับปัจจุบัน"]
+
+ ]);
+
+ }else{
+
+ downloadCSV("สรุปรวม_ปร4_ปร5_ปร6.csv",[
+
+ ...head,[],...detail,[],
+
+ ["รวมต้นทุนโดยตรง",subtotal],["Factor F",f],["ยอดรวมประมาณการ",total]
+
+ ]);
+
+ }
+
+}
+
+document.querySelectorAll('#width,#length,#eave,#pitch,#waste').forEach(el=>el.addEventListener('change',()=>{
+
+ try{
+
+ const g=geometry();
+
+ rows.forEach(r=>{
+
+ if(r.kind==="roof")r.qty=g.roof;
+
+ if(r.kind==="sheet")r.qty=g.sheet;
+
+ if(r.kind==="ridge")r.qty=g.ridge;
+
+ if(r.kind==="edge")r.qty=g.edge;
+
+ });
+
+ renderRows();calculate();
+
+ }catch(e){alert(e.message)}
+
+}));
+
+document.getElementById('factor').addEventListener('change',calculate);
+
+init();
+
+</script>
+
+</body>
+
+</html>
